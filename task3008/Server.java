@@ -3,9 +3,10 @@ package com.javarush.task.task30.task3008;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.javarush.task.task30.task3008.MessageType.*;
 
 public class Server {
     private static Map<String, Connection> connectionMap = new ConcurrentHashMap<>();
@@ -43,6 +44,25 @@ public class Server {
 
         @Override
         public void run() {
+        }
+
+        private String serverHandshake(Connection connection) throws IOException, ClassNotFoundException {
+            while (true) {
+                try {
+                    connection.send(new Message(NAME_REQUEST, "Enter your name:"));
+                    Message message = connection.receive();
+                    if (message.getType() != USER_NAME
+                    || message.getData().isEmpty()
+                    || connectionMap.containsKey(message.getData())) {
+                        continue;
+                    }
+                    connectionMap.put(message.getData(), connection);
+                    connection.send(new Message(NAME_ACCEPTED, "Connection established."));
+                    ConsoleHelper.writeMessage("New user " + message.getData() + " connected.");
+                    return message.getData();
+                } catch (IOException | ClassNotFoundException ignored) {
+                }
+            }
         }
     }
 }

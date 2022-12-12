@@ -25,7 +25,6 @@ public class ConsoleHelper {
         while (true) {
             try {
                 return Integer.parseInt(readString());
-
             } catch (NumberFormatException e) {
                 writeMessage("Произошла ошибка при попытке ввода числа. Попробуйте еще раз.");
             }

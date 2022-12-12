@@ -11,28 +11,29 @@ import static com.javarush.task.task30.task3008.MessageType.*;
 public class Server {
     private static Map<String, Connection> connectionMap = new ConcurrentHashMap<>();
 
-    public static void main(String[] args) {
-        ConsoleHelper.writeMessage("Enter server port:");
-        try (ServerSocket socket =  new ServerSocket(ConsoleHelper.readInt())) {
-            ConsoleHelper.writeMessage("Chat-Server is running.");
-
-            while (true) {
-                new Handler(socket.accept()).start();
-            }
-
-        } catch(IOException e){
-            ConsoleHelper.writeMessage("Error occurred while starting or running the server.");
-        }
-    }
-
     public static void sendBroadcastMessage(Message message) {
         connectionMap.forEach((name, connection) -> {
             try {
                 connection.send(message);
-            } catch (IOException ignored) {
+            } catch (IOException e) {
                 ConsoleHelper.writeMessage("Server failed to send message to " + name);
             }
         });
+    }
+
+    public static void main(String[] args) {
+        ConsoleHelper.writeMessage("Enter server port:");
+        int port = ConsoleHelper.readInt();
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            ConsoleHelper.writeMessage("Chat-Server is running.");
+            while (true) {
+                Socket socket = serverSocket.accept();
+                new Handler(socket).start();
+            }
+        } catch (IOException e) {
+            ConsoleHelper.writeMessage("Server error.");
+        }
+
     }
 
     private static class Handler extends Thread {
@@ -42,43 +43,58 @@ public class Server {
             this.socket = socket;
         }
 
-        @Override
         public void run() {
+            Connection connection = null;
+            String userName = null;
+            ConsoleHelper.writeMessage("New connection with: " + socket.getRemoteSocketAddress());
+            try {
+                connection = new Connection(socket);
+                userName = serverHandshake(connection);
+                sendBroadcastMessage(new Message(USER_ADDED, userName));
+                notifyUsers(connection, userName);
+                serverMainLoop(connection, userName);
+            } catch (IOException | ClassNotFoundException e) {
+                ConsoleHelper.writeMessage("Exchange error with the remote address: " + socket.getRemoteSocketAddress());
+            } finally {
+                ConsoleHelper.writeMessage("Connection to " + socket.getRemoteSocketAddress() + " is closed.");
+                if (userName != null) {
+                    connectionMap.remove(userName);
+                    sendBroadcastMessage(new Message(USER_REMOVED, userName));
+                }
+                try {
+                    if (connection != null) connection.close();
+                } catch (IOException ignored) {}
+            }
         }
 
         private String serverHandshake(Connection connection) throws IOException, ClassNotFoundException {
             while (true) {
-                try {
-                    connection.send(new Message(NAME_REQUEST, "Enter your name:"));
-                    Message message = connection.receive();
-                    if (message.getType() != USER_NAME
-                    || message.getData().isEmpty()
-                    || connectionMap.containsKey(message.getData())) {
-                        continue;
-                    }
-                    connectionMap.put(message.getData(), connection);
-                    connection.send(new Message(NAME_ACCEPTED, "Connection established."));
-                    ConsoleHelper.writeMessage("New user " + message.getData() + " connected.");
-                    return message.getData();
-                } catch (IOException | ClassNotFoundException ignored) {
-                }
+                connection.send(new Message(NAME_REQUEST));
+                Message reply = connection.receive();
+                if (reply.getType() != USER_NAME ||
+                reply.getData().isEmpty() ||
+                connectionMap.containsKey(reply.getData()))
+                    continue;
+                connectionMap.put(reply.getData(), connection);
+                connection.send(new Message(NAME_ACCEPTED));
+                return reply.getData();
             }
         }
 
         private void notifyUsers(Connection connection, String userName) throws IOException {
-            for (String name : connectionMap.keySet()) {
-                if (!name.equals(userName))
+            for (String name : connectionMap.keySet())
+                if (!name.equals(userName)) {
                     connection.send(new Message(USER_ADDED, name));
-            }
+                }
         }
 
         private void serverMainLoop(Connection connection, String userName) throws IOException, ClassNotFoundException {
             while (true) {
                 Message message = connection.receive();
-                if (message.getType()==TEXT) {
-                    sendBroadcastMessage( new Message(TEXT, userName + ": " + message.getData()));
+                if (message.getType() == TEXT) {
+                    sendBroadcastMessage(new Message(TEXT, userName + ": " + message.getData()));
                 } else {
-                    ConsoleHelper.writeMessage("User " + userName + ", message error");
+                    ConsoleHelper.writeMessage("Protocol error, message from " + userName + ".");
                 }
             }
         }

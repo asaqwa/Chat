@@ -36,12 +36,10 @@ public class Connection implements Closeable {
 
     public void close() throws IOException {
         try {
-            socket.close();
-        } catch (IOException e) {
-            throw e;
-        } finally {
             in.close();
+        } finally {
             out.close();
+            socket.close();
         }
     }
 }

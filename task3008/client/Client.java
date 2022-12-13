@@ -22,16 +22,14 @@ public class Client {
         socketThread.setDaemon(true);
         socketThread.start();
 
-
-            try {
-                synchronized (this) {
-                    wait();
-                }
-            } catch (InterruptedException e) {
-                ConsoleHelper.writeMessage("Server connection error.");
-                return;
+        try {
+            synchronized (this) {
+                wait();
             }
-
+        } catch (InterruptedException e) {
+            ConsoleHelper.writeMessage("Server connection error.");
+            return;
+        }
 
         if (clientConnected) {
             ConsoleHelper.writeMessage("Соединение установлено. Для выхода наберите команду 'exit'.");
@@ -82,5 +80,24 @@ public class Client {
 
     public class SocketThread extends Thread {
 
+        protected void processIncomingMessage(String message) {
+            ConsoleHelper.writeMessage(message);
+        }
+
+        protected void informAboutAddingNewUser(String userName) {
+            ConsoleHelper.writeMessage(userName + " joined the chat.");
+
+        }
+
+        protected void informAboutDeletingNewUser(String userName) {
+            ConsoleHelper.writeMessage(userName + "left the chat.");
+        }
+
+        protected void notifyConnectionStatusChanged(boolean clientConnected) {
+            Client.this.clientConnected = clientConnected;
+            synchronized (Client.this) {
+                Client.this.notify();
+            }
+        }
     }
 }

@@ -14,8 +14,7 @@ public class Client {
     private volatile boolean clientConnected = false;
 
     public static void main(String[] args) {
-        Client client = new Client();
-        client.run();
+        new Client().run();
     }
 
     public void run() {
@@ -23,19 +22,20 @@ public class Client {
         socketThread.setDaemon(true);
         socketThread.start();
 
-        try {
-            synchronized (this) {
+        synchronized (this) {
+            try {
                 wait();
+            } catch (InterruptedException e) {
+                ConsoleHelper.writeMessage("Connection aborted.");
+                return;
             }
-        } catch (InterruptedException e) {
-            ConsoleHelper.writeMessage("Server connection error.");
-            return;
         }
 
         if (clientConnected) {
             ConsoleHelper.writeMessage("Соединение установлено. Для выхода наберите команду 'exit'.");
         } else {
             ConsoleHelper.writeMessage("Произошла ошибка во время работы клиента.");
+            return;
         }
 
         while (clientConnected) {
@@ -43,8 +43,6 @@ public class Client {
             if ("exit".equals(text)) break;
             if (shouldSendTextFromConsole()) sendTextMessage(text);
         }
-
-
     }
 
     protected String getServerAddress() {
@@ -57,8 +55,8 @@ public class Client {
         return ConsoleHelper.readInt();
     }
 
-    protected String getUserName()  {
-        ConsoleHelper.writeMessage("Enter chat-name:");
+    protected String getUserName() {
+        ConsoleHelper.writeMessage("Enter user name:");
         return ConsoleHelper.readString();
     }
 
@@ -83,8 +81,7 @@ public class Client {
 
         @Override
         public void run() {
-            try {
-                Socket socket = new Socket(getServerAddress(), getServerPort());
+            try (Socket socket = new Socket(getServerAddress(), getServerPort())) {
                 connection = new Connection(socket);
                 clientHandshake();
                 clientMainLoop();
@@ -96,13 +93,12 @@ public class Client {
         protected void clientHandshake() throws IOException, ClassNotFoundException {
             while (true) {
                 Message message = connection.receive();
-                if (message.getType() == NAME_REQUEST)
+                if (message.getType() == NAME_REQUEST) {
                     connection.send(new Message(USER_NAME, getUserName()));
-                else if (message.getType() == NAME_ACCEPTED) {
+                } else if (message.getType() == NAME_ACCEPTED) {
                     notifyConnectionStatusChanged(true);
                     return;
-                }
-                else
+                } else
                     throw new IOException("Unexpected MessageType");
             }
         }
@@ -132,12 +128,11 @@ public class Client {
         }
 
         protected void informAboutAddingNewUser(String userName) {
-            ConsoleHelper.writeMessage(userName + " joined the chat.");
-
+            ConsoleHelper.writeMessage(userName + " has joined the chat.");
         }
 
         protected void informAboutDeletingNewUser(String userName) {
-            ConsoleHelper.writeMessage(userName + "left the chat.");
+            ConsoleHelper.writeMessage(userName + " has left the chat.");
         }
 
         protected void notifyConnectionStatusChanged(boolean clientConnected) {

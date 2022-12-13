@@ -15,8 +15,13 @@ public class BotClient extends Client {
     }
 
     @Override
+    protected SocketThread getSocketThread() {
+        return new BotSocketThread();
+    }
+
+    @Override
     protected String getUserName() {
-        return "date_bot_" + (int)(Math.random()*100);
+        return "date_bot_" + (int) (Math.random() * 100);
     }
 
     @Override
@@ -24,13 +29,7 @@ public class BotClient extends Client {
         return false;
     }
 
-    @Override
-    protected SocketThread getSocketThread() {
-        return new BotSocketThread();
-    }
-
     public class BotSocketThread extends Client.SocketThread {
-
         @Override
         protected void clientMainLoop() throws IOException, ClassNotFoundException {
             sendTextMessage("Привет чатику. Я бот. Понимаю команды: дата, день, месяц, год, время, час, минуты, секунды.");

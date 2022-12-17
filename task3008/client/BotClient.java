@@ -6,17 +6,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.GregorianCalendar;
 
-import static com.javarush.task.task30.task3008.client.BotClient.DateFormat.*;
-
 public class BotClient extends Client {
 
     public static void main(String[] args) {
         new BotClient().run();
-    }
-
-    @Override
-    protected SocketThread getSocketThread() {
-        return new BotSocketThread();
     }
 
     @Override
@@ -27,6 +20,11 @@ public class BotClient extends Client {
     @Override
     protected boolean shouldSendTextFromConsole() {
         return false;
+    }
+
+    @Override
+    protected SocketThread getSocketThread() {
+        return new BotSocketThread();
     }
 
     public class BotSocketThread extends Client.SocketThread {
@@ -40,53 +38,38 @@ public class BotClient extends Client {
         protected void processIncomingMessage(String message) {
             ConsoleHelper.writeMessage(message);
             if (!message.contains(": ")) return;
-
             String[] split = message.split(": ");
-            String former = "Информация для %s: %s";
-
             switch (split[1]) {
                 case "дата":
-                    sendTextMessage(String.format(former, split[0], DATE));
+                    processFurther(split[0], "d.MM.YYYY");
                     break;
                 case "день":
-                    sendTextMessage(String.format(former, split[0], DAY));
+                    processFurther(split[0], "d");
                     break;
                 case "месяц":
-                    sendTextMessage(String.format(former, split[0], MONTH));
+                    processFurther(split[0], "MMMM");
                     break;
                 case "год":
-                    sendTextMessage(String.format(former, split[0], YEAR));
+                    processFurther(split[0], "YYYY");
                     break;
                 case "время":
-                    sendTextMessage(String.format(former, split[0], TIME));
+                    processFurther(split[0], "H:mm:ss");
                     break;
                 case "час":
-                    sendTextMessage(String.format(former, split[0], HOUR));
+                    processFurther(split[0], "H");
                     break;
                 case "минуты":
-                    sendTextMessage(String.format(former, split[0], MINUTES));
+                    processFurther(split[0], "m");
                     break;
                 case "секунды":
-                    sendTextMessage(String.format(former, split[0], SECONDS));
+                    processFurther(split[0], "s");
                     break;
             }
-
-
-        }
-    }
-
-    enum DateFormat {
-        DATE("d.MM.YYYY"), DAY("d"), MONTH("MMMM"), YEAR("YYYY"), TIME("H:mm:ss"), HOUR("H"), MINUTES("m"), SECONDS("s");
-
-        private final SimpleDateFormat dateFormat;
-
-        DateFormat(String pattern) {
-            dateFormat = new SimpleDateFormat(pattern);
         }
 
-        @Override
-        public String toString() {
-            return dateFormat.format(new GregorianCalendar().getTime());
+        private void processFurther(String name, String pattern) {
+            String date = new SimpleDateFormat(pattern).format(new GregorianCalendar().getTime());
+            sendTextMessage(String.format("Информация для %s: %s", name, date));
         }
     }
 }

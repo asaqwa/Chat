@@ -29,29 +29,25 @@ public class Client {
                 ConsoleHelper.writeMessage("Connection aborted.");
                 return;
             }
-        }
 
-        if (clientConnected) {
-            ConsoleHelper.writeMessage("Соединение установлено. Для выхода наберите команду 'exit'.");
-        } else {
-            ConsoleHelper.writeMessage("Произошла ошибка во время работы клиента.");
-            return;
-        }
+            if (clientConnected) ConsoleHelper.writeMessage("Соединение установлено. Для выхода наберите команду 'exit'.");
+            else ConsoleHelper.writeMessage("Произошла ошибка во время работы клиента.");
 
-        while (clientConnected) {
-            String text = ConsoleHelper.readString();
-            if ("exit".equals(text)) break;
-            if (shouldSendTextFromConsole()) sendTextMessage(text);
+            while (clientConnected) {
+                String text = ConsoleHelper.readString();
+                if ("exit".equals(text)) break;
+                if (shouldSendTextFromConsole()) sendTextMessage(text);
+            }
         }
     }
 
-    protected String getServerAddress() {
+    protected String getServerAddress(){
         ConsoleHelper.writeMessage("Enter server address:");
         return ConsoleHelper.readString();
     }
 
     protected int getServerPort() {
-        ConsoleHelper.writeMessage("Enter server port:");
+        ConsoleHelper.writeMessage("Enter server Port:");
         return ConsoleHelper.readInt();
     }
 
@@ -72,8 +68,8 @@ public class Client {
         try {
             connection.send(new Message(TEXT, text));
         } catch (IOException e) {
-            clientConnected = false;
             ConsoleHelper.writeMessage("Connection error, user disconnected.");
+            clientConnected = false;
         }
     }
 
@@ -92,10 +88,10 @@ public class Client {
 
         protected void clientHandshake() throws IOException, ClassNotFoundException {
             while (true) {
-                Message message = connection.receive();
-                if (message.getType() == NAME_REQUEST) {
+                Message serverReply = connection.receive();
+                if (serverReply.getType() == NAME_REQUEST) {
                     connection.send(new Message(USER_NAME, getUserName()));
-                } else if (message.getType() == NAME_ACCEPTED) {
+                } else if (serverReply.getType() == NAME_ACCEPTED) {
                     notifyConnectionStatusChanged(true);
                     return;
                 } else
@@ -106,20 +102,14 @@ public class Client {
         protected void clientMainLoop() throws IOException, ClassNotFoundException {
             while (true) {
                 Message message = connection.receive();
-                if (message.getType() == null) throw new IOException("Unexpected MessageType");
-                switch (message.getType()) {
-                    case TEXT:
-                        processIncomingMessage(message.getData());
-                        break;
-                    case USER_ADDED:
-                        informAboutAddingNewUser(message.getData());
-                        break;
-                    case USER_REMOVED:
-                        informAboutDeletingNewUser(message.getData());
-                        break;
-                    default:
-                        throw new IOException("Unexpected MessageType");
-                }
+                if (message.getType() == TEXT) {
+                    processIncomingMessage(message.getData());
+                } else if (message.getType() == USER_ADDED) {
+                    informAboutAddingNewUser(message.getData());
+                } else if (message.getType() == USER_REMOVED) {
+                    informAboutDeletingNewUser(message.getData());
+                } else
+                    throw new IOException("Unexpected MessageType");
             }
         }
 

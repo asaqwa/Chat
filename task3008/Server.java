@@ -14,15 +14,14 @@ public class Server {
     public static void main(String[] args) {
         ConsoleHelper.writeMessage("Enter server port:");
         try (ServerSocket serverSocket = new ServerSocket(ConsoleHelper.readInt())) {
-            ConsoleHelper.writeMessage("Chat-Server is running.");
+            ConsoleHelper.writeMessage("Chat server is running.");
             while (true) {
-                Socket socket = serverSocket.accept();
-                new Handler(socket).start();
+                Socket newConnection = serverSocket.accept();
+                new Handler(newConnection).start();
             }
         } catch (IOException e) {
             ConsoleHelper.writeMessage("Server error.");
         }
-
     }
 
     public static void sendBroadcastMessage(Message message) {
@@ -44,19 +43,19 @@ public class Server {
 
         @Override
         public void run() {
-            String name = null;
+            String userName = null;
             ConsoleHelper.writeMessage("New connection: " + socket.getRemoteSocketAddress());
             try (Connection connection = new Connection(socket)) {
-                name = serverHandshake(connection);
-                sendBroadcastMessage(new Message(USER_ADDED, name));
-                notifyUsers(connection, name);
-                serverMainLoop(connection, name);
+                userName = serverHandshake(connection);
+                sendBroadcastMessage(new Message(USER_ADDED, userName));
+                notifyUsers(connection, userName);
+                serverMainLoop(connection, userName);
             } catch (IOException | ClassNotFoundException e) {
                 ConsoleHelper.writeMessage("Exchange error with: " + socket.getRemoteSocketAddress());
             } finally {
-                if (name != null) {
-                    connectionMap.remove(name);
-                    sendBroadcastMessage(new Message(USER_REMOVED, name));
+                if (userName != null) {
+                    connectionMap.remove(userName);
+                    sendBroadcastMessage(new Message(USER_REMOVED, userName));
                     ConsoleHelper.writeMessage("Connection closed. " + socket.getRemoteSocketAddress());
                 }
             }
@@ -88,7 +87,7 @@ public class Server {
                 if (message.getType() == TEXT) {
                     sendBroadcastMessage(new Message(TEXT, userName + ": " + message.getData()));
                 } else {
-                    ConsoleHelper.writeMessage("Message protocol error: " + connection.getRemoteSocketAddress());
+                    ConsoleHelper.writeMessage("Message type error. " + connection.getRemoteSocketAddress());
                 }
             }
         }
